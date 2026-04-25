@@ -50,13 +50,10 @@ export const useAuthStore = create<AuthStoreState>()(
           obfuscatedStorage.migratePlaintextKeys(['apiBase', 'apiUrl', 'managementKey']);
 
           const wasLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-          const legacyBase =
-            obfuscatedStorage.getItem<string>('apiBase') ||
-            obfuscatedStorage.getItem<string>('apiUrl', { encrypt: true });
           const legacyKey = obfuscatedStorage.getItem<string>('managementKey');
 
-          const { apiBase, managementKey, rememberPassword } = get();
-          const resolvedBase = normalizeApiBase(apiBase || legacyBase || detectApiBaseFromLocation());
+          const { managementKey, rememberPassword } = get();
+          const resolvedBase = normalizeApiBase(detectApiBaseFromLocation());
           const resolvedKey = managementKey || legacyKey || '';
           const resolvedRememberPassword = rememberPassword || Boolean(managementKey) || Boolean(legacyKey);
 
@@ -65,6 +62,8 @@ export const useAuthStore = create<AuthStoreState>()(
             managementKey: resolvedKey,
             rememberPassword: resolvedRememberPassword
           });
+          obfuscatedStorage.removeItem('apiBase');
+          obfuscatedStorage.removeItem('apiUrl');
           apiClient.setConfig({ apiBase: resolvedBase, managementKey: resolvedKey });
 
           if (wasLoggedIn && resolvedBase && resolvedKey) {

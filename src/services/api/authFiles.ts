@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 认证文件与 OAuth 排除模型相关 API
  */
 
@@ -505,6 +505,21 @@ export const authFilesApi = {
       : [];
   },
 
+  async refreshKiroModels(name: string): Promise<{ id: string; display_name?: string; type?: string; owned_by?: string }[]> {
+    const data = await apiClient.post<Record<string, unknown>>(
+      `/auth-files/kiro/models/refresh?name=${encodeURIComponent(name)}`,
+      {}
+    );
+    const models = data.models ?? data['models'];
+    return Array.isArray(models)
+      ? (models as { id: string; display_name?: string; type?: string; owned_by?: string }[])
+      : [];
+  },
+
+  async getKiroQuota(name: string): Promise<Record<string, unknown>> {
+    return apiClient.get<Record<string, unknown>>(`/auth-files/kiro/quota?name=${encodeURIComponent(name)}`);
+  },
+
   // 获取指定 channel 的模型定义
   async getModelDefinitions(channel: string): Promise<{ id: string; display_name?: string; type?: string; owned_by?: string }[]> {
     const normalizedChannel = String(channel ?? '').trim().toLowerCase();
@@ -518,3 +533,4 @@ export const authFilesApi = {
       : [];
   }
 };
+

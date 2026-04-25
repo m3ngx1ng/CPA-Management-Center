@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Validation and type checking functions for quota management.
  */
 
@@ -43,6 +43,10 @@ export function isKimiFile(file: AuthFileItem): boolean {
   return resolveAuthProvider(file) === 'kimi';
 }
 
+export function isKiroFile(file: AuthFileItem): boolean {
+  return resolveAuthProvider(file) === 'kiro';
+}
+
 export function isRuntimeOnlyAuthFile(file: AuthFileItem): boolean {
   const raw = file['runtime_only'] ?? file.runtimeOnly;
   if (typeof raw === 'boolean') return raw;
@@ -63,3 +67,4 @@ export function isIgnoredGeminiCliModel(modelId: string): boolean {
     (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`)
   );
 }
+

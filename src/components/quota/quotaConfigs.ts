@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Quota configuration definitions.
  */
 
@@ -28,6 +28,7 @@ import type {
   GeminiCliUserTier,
   KimiQuotaRow,
   KimiQuotaState,
+  KiroQuotaState,
 } from '@/types';
 import { apiCallApi, authFilesApi, getApiCallErrorMessage } from '@/services/api';
 import { useQuotaStore } from '@/stores';
@@ -74,6 +75,7 @@ import {
   isGeminiCliFile,
   isKimiFile,
   isRuntimeOnlyAuthFile,
+  isKiroFile,
 } from '@/utils/quota';
 import { normalizeAuthIndex } from '@/utils/usage';
 import type { QuotaRenderHelpers } from './QuotaCard';
@@ -81,7 +83,7 @@ import styles from '@/pages/QuotaPage.module.scss';
 
 type QuotaUpdater<T> = T | ((prev: T) => T);
 
-type QuotaType = 'antigravity' | 'claude' | 'codex' | 'gemini-cli' | 'kimi';
+type QuotaType = 'antigravity' | 'claude' | 'codex' | 'gemini-cli' | 'kimi' | 'kiro';
 
 const DEFAULT_ANTIGRAVITY_PROJECT_ID = 'bamboo-precept-lgxtn';
 const QUOTA_PROGRESS_HIGH_THRESHOLD = 70;
@@ -98,11 +100,13 @@ export interface QuotaStore {
   codexQuota: Record<string, CodexQuotaState>;
   geminiCliQuota: Record<string, GeminiCliQuotaState>;
   kimiQuota: Record<string, KimiQuotaState>;
+  kiroQuota: Record<string, KiroQuotaState>;
   setAntigravityQuota: (updater: QuotaUpdater<Record<string, AntigravityQuotaState>>) => void;
   setClaudeQuota: (updater: QuotaUpdater<Record<string, ClaudeQuotaState>>) => void;
   setCodexQuota: (updater: QuotaUpdater<Record<string, CodexQuotaState>>) => void;
   setGeminiCliQuota: (updater: QuotaUpdater<Record<string, GeminiCliQuotaState>>) => void;
   setKimiQuota: (updater: QuotaUpdater<Record<string, KimiQuotaState>>) => void;
+  setKiroQuota: (updater: QuotaUpdater<Record<string, KiroQuotaState>>) => void;
   clearQuotaCache: () => void;
 }
 
@@ -1353,3 +1357,121 @@ export const KIMI_CONFIG: QuotaConfig<KimiQuotaState, KimiQuotaRow[]> = {
   gridClassName: styles.kimiGrid,
   renderQuotaItems: renderKimiItems,
 };
+const fetchKiroQuota = async (
+  file: AuthFileItem,
+  _t: TFunction
+): Promise<{
+  subscriptionTitle: string | null;
+  currentUsage: number | null;
+  usageLimit: number | null;
+  remaining: number | null;
+  remainingFraction: number | null;
+  nextReset: string | null;
+}> => {
+  const payload = await authFilesApi.getKiroQuota(file.name);
+  return {
+    subscriptionTitle: normalizeStringValue(payload.subscription_title ?? payload.subscriptionTitle),
+    currentUsage: normalizeNumberValue(payload.current_usage ?? payload.currentUsage),
+    usageLimit: normalizeNumberValue(payload.usage_limit ?? payload.usageLimit),
+    remaining: normalizeNumberValue(payload.remaining),
+    remainingFraction: normalizeNumberValue(payload.remaining_fraction ?? payload.remainingFraction),
+    nextReset: normalizeStringValue(payload.next_reset ?? payload.nextReset),
+  };
+};
+
+const renderKiroItems = (
+  quota: KiroQuotaState,
+  t: TFunction,
+  helpers: QuotaRenderHelpers
+): ReactNode => {
+  const { styles: styleMap, QuotaProgressBar } = helpers;
+  const { createElement: h, Fragment } = React;
+  const remainingFraction = quota.remainingFraction ?? null;
+  const percent = remainingFraction === null ? null : Math.max(0, Math.min(100, Math.round(remainingFraction * 100)));
+  const resetLabel = quota.nextReset ? formatQuotaResetTime(quota.nextReset) : '-';
+  const amountLabel =
+    quota.remaining !== null && quota.remaining !== undefined && quota.usageLimit !== null && quota.usageLimit !== undefined
+      ? `${quota.remaining} / ${quota.usageLimit}`
+      : quota.currentUsage !== null && quota.currentUsage !== undefined && quota.usageLimit !== null && quota.usageLimit !== undefined
+        ? `${quota.currentUsage} / ${quota.usageLimit}`
+        : null;
+
+  const nodes: ReactNode[] = [];
+  if (quota.subscriptionTitle) {
+    nodes.push(
+      h(
+        'div',
+        { key: 'plan', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('kiro_quota.plan_label')),
+        h('span', { className: styleMap.codexPlanValue }, quota.subscriptionTitle)
+      )
+    );
+  }
+
+  nodes.push(
+    h(
+      'div',
+      { key: 'quota', className: styleMap.quotaRow },
+      h(
+        'div',
+        { className: styleMap.quotaRowHeader },
+        h('span', { className: styleMap.quotaModel }, t('kiro_quota.remaining_label')),
+        h(
+          'div',
+          { className: styleMap.quotaMeta },
+          h('span', { className: styleMap.quotaPercent }, percent === null ? '--' : `${percent}%`),
+          amountLabel ? h('span', { className: styleMap.quotaAmount }, amountLabel) : null,
+          h('span', { className: styleMap.quotaReset }, resetLabel)
+        )
+      ),
+      h(QuotaProgressBar, {
+        percent,
+        highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+        mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+      })
+    )
+  );
+
+  return h(Fragment, null, ...nodes);
+};
+
+export const KIRO_CONFIG: QuotaConfig<
+  KiroQuotaState,
+  {
+    subscriptionTitle: string | null;
+    currentUsage: number | null;
+    usageLimit: number | null;
+    remaining: number | null;
+    remainingFraction: number | null;
+    nextReset: string | null;
+  }
+> = {
+  type: 'kiro',
+  i18nPrefix: 'kiro_quota',
+  cardIdleMessageKey: 'quota_management.card_idle_hint',
+  filterFn: (file) => isKiroFile(file) && !isDisabledAuthFile(file),
+  fetchQuota: fetchKiroQuota,
+  storeSelector: (state) => state.kiroQuota,
+  storeSetter: 'setKiroQuota',
+  buildLoadingState: () => ({ status: 'loading' }),
+  buildSuccessState: (data) => ({
+    status: 'success',
+    subscriptionTitle: data.subscriptionTitle,
+    currentUsage: data.currentUsage,
+    usageLimit: data.usageLimit,
+    remaining: data.remaining,
+    remainingFraction: data.remainingFraction,
+    nextReset: data.nextReset,
+  }),
+  buildErrorState: (message, status) => ({
+    status: 'error',
+    error: message,
+    errorStatus: status,
+  }),
+  cardClassName: styles.codexCard,
+  controlsClassName: styles.codexControls,
+  controlClassName: styles.codexControl,
+  gridClassName: styles.codexGrid,
+  renderQuotaItems: renderKiroItems,
+};
+

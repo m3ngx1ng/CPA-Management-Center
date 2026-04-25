@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Quota management types.
  */
 
@@ -306,3 +306,16 @@ export interface KimiQuotaState {
   error?: string;
   errorStatus?: number;
 }
+
+export interface KiroQuotaState {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  subscriptionTitle?: string | null;
+  currentUsage?: number | null;
+  usageLimit?: number | null;
+  remaining?: number | null;
+  remainingFraction?: number | null;
+  nextReset?: string | null;
+  error?: string;
+  errorStatus?: number;
+}
+

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+﻿import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { authFilesApi } from '@/services/api';
 import { useNotificationStore } from '@/stores';
@@ -51,7 +51,10 @@ export function useAuthFilesModels(): UseAuthFilesModelsResult {
 
       setModelsLoading(true);
       try {
-        const models = await authFilesApi.getModelsForAuthFile(item.name);
+        const provider = String(item.provider ?? item.type ?? '').trim().toLowerCase();
+        const models = provider === 'kiro'
+          ? await authFilesApi.refreshKiroModels(item.name)
+          : await authFilesApi.getModelsForAuthFile(item.name);
         modelsCacheRef.current.set(item.name, models);
         setModelsList(models);
       } catch (err) {
@@ -83,4 +86,5 @@ export function useAuthFilesModels(): UseAuthFilesModelsResult {
     closeModelsModal
   };
 }
+
 
