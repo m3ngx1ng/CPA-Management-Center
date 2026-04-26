@@ -73,10 +73,13 @@ export function OpenAISection({
           const priorityB = b.priority ?? -Infinity;
           return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
         }
-        case 'name':
-          return sortDirection === 'asc'
-            ? (a.name || '').localeCompare(b.name || '')
-            : (b.name || '').localeCompare(a.name || '');
+        case 'name': {
+          const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+          const nameA = a.name || '';
+          const nameB = b.name || '';
+          const result = collator.compare(nameA, nameB);
+          return sortDirection === 'asc' ? result : -result;
+        }
         case 'successRate': {
           const statsA = getOpenAIProviderStats(a, keyStats);
           const statsB = getOpenAIProviderStats(b, keyStats);
