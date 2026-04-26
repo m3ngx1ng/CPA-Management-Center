@@ -1504,6 +1504,7 @@
                        "billing_cycle":  "Billing Cycle",
                        "api_usage":  "API Usage",
                        "auto_usage":  "Auto Complete Usage",
+                       "next_reset":  "Next Reset",
                        "no_data":  "No usage data available"
                    },
     "copilot_quota":  {
@@ -1516,6 +1517,9 @@
                        "seat_type":  "Plan",
                        "seat_usage":  "Seat Usage",
                        "requests_usage":  "Requests This Month",
+                       "next_reset":  "Next Reset",
+                       "chat_usage":  "Chat Usage",
+                       "completions_usage":  "Completions Usage",
                        "no_data":  "No usage data available"
                    }
 }

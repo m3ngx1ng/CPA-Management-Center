@@ -327,6 +327,9 @@ export interface CursorQuotaState {
   apiPercentUsed?: number | null;
   autoPercentUsed?: number | null;
   totalPercentUsed?: number | null;
+  usageLimit?: number | null;
+  currentUsage?: number | null;
+  nextReset?: string | null;
   error?: string;
   errorStatus?: number;
 }
@@ -338,6 +341,11 @@ export interface CopilotQuotaState {
   seatUsed?: number | null;
   requestsThisMonth?: number | null;
   requestsLimit?: number | null;
+  quotaResetDate?: string | null;
+  chatQuotaRemaining?: number | null;
+  chatQuotaTotal?: number | null;
+  completionsQuotaRemaining?: number | null;
+  completionsQuotaTotal?: number | null;
   error?: string;
   errorStatus?: number;
 }

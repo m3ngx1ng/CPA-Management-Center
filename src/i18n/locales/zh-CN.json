@@ -1504,6 +1504,7 @@
                        "billing_cycle":  "账单周期",
                        "api_usage":  "API 使用量",
                        "auto_usage":  "自动补全使用量",
+                       "next_reset":  "下次重置",
                        "no_data":  "暂无用量数据"
                    },
     "copilot_quota":  {
@@ -1516,6 +1517,9 @@
                        "seat_type":  "套餐",
                        "seat_usage":  "席位使用量",
                        "requests_usage":  "本月请求次数",
+                       "next_reset":  "下次重置",
+                       "chat_usage":  "对话使用量",
+                       "completions_usage":  "补全使用量",
                        "no_data":  "暂无用量数据"
                    }
 }

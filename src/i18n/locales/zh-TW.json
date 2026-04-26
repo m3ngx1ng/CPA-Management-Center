@@ -731,6 +731,7 @@
     "billing_cycle": "帳單週期",
     "api_usage": "API 使用量",
     "auto_usage": "自動補全使用量",
+    "next_reset": "下次重置",
     "no_data": "暫無用量資料"
   },
   "copilot_quota": {
@@ -743,6 +744,9 @@
     "seat_type": "方案",
     "seat_usage": "席位使用量",
     "requests_usage": "本月請求次數",
+    "next_reset": "下次重置",
+    "chat_usage": "對話使用量",
+    "completions_usage": "補全使用量",
     "no_data": "暫無用量資料"
   },
   "vertex_import": {

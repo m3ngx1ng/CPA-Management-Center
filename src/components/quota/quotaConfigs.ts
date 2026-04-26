@@ -1508,6 +1508,18 @@ interface CursorAuthFileData {
   membership_type?: string;
 }
 
+interface CursorQuotaAPIResponse {
+  quota?: {
+    limit?: number;
+    used?: number;
+    reset_at?: string;
+  };
+  rate_limit?: {
+    remaining?: number;
+    reset_after?: number;
+  };
+}
+
 const fetchCursorQuota = async (
   file: AuthFileItem,
   _t: TFunction
@@ -1518,18 +1530,50 @@ const fetchCursorQuota = async (
   apiPercentUsed: number | null;
   autoPercentUsed: number | null;
   totalPercentUsed: number | null;
+  usageLimit: number | null;
+  currentUsage: number | null;
+  nextReset: string | null;
 }> => {
-  const data = await authFilesApi.downloadJsonObject(file.name);
-  const cursorData = data as CursorAuthFileData;
-  const usage = cursorData?.cursor_usage_raw;
+  const authFileData = await authFilesApi.downloadJsonObject(file.name);
+  const cursorAuthData = authFileData as CursorAuthFileData;
+
+  let usageLimit: number | null = null;
+  let currentUsage: number | null = null;
+  let nextReset: string | null = null;
+  let apiPercentUsed: number | null = null;
+
+  try {
+    const apiData = await authFilesApi.getCursorQuota(file.name);
+    const quotaData = apiData as CursorQuotaAPIResponse;
+
+    if (quotaData?.quota?.limit) {
+      usageLimit = quotaData.quota.limit;
+    }
+    if (quotaData?.quota?.used !== undefined) {
+      currentUsage = quotaData.quota.used;
+      if (usageLimit && usageLimit > 0) {
+        apiPercentUsed = Math.round((currentUsage / usageLimit) * 100);
+      }
+    }
+    if (quotaData?.quota?.reset_at) {
+      nextReset = quotaData.quota.reset_at;
+    }
+  } catch {
+    // API call failed, fall back to auth file data
+  }
+
+  const usage = cursorAuthData?.cursor_usage_raw;
 
   return {
-    membershipType: normalizeStringValue(usage?.membershipType ?? data?.membership_type),
+    membershipType: normalizeStringValue(usage?.membershipType ?? cursorAuthData?.membership_type),
     billingCycleEnd: normalizeStringValue(usage?.billingCycleEnd),
     billingCycleStart: normalizeStringValue(usage?.billingCycleStart),
-    apiPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.apiPercentUsed),
+    apiPercentUsed: apiPercentUsed ?? normalizeNumberValue(usage?.individualUsage?.plan?.apiPercentUsed),
     autoPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.autoPercentUsed),
     totalPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.totalPercentUsed),
+    usageLimit,
+    currentUsage,
+    nextReset,
   };
 };
 
@@ -1565,12 +1609,27 @@ const renderCursorItems = (
     );
   }
 
+  if (quota.nextReset) {
+    const resetLabel = formatQuotaResetTime(quota.nextReset);
+    nodes.push(
+      h(
+        'div',
+        { key: 'next_reset', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('cursor_quota.next_reset')),
+        h('span', { className: styleMap.codexPlanValue }, resetLabel)
+      )
+    );
+  }
+
   const apiPercent = quota.apiPercentUsed !== null && quota.apiPercentUsed !== undefined
     ? Math.round(quota.apiPercentUsed)
     : null;
 
   if (apiPercent !== null) {
     const remaining = Math.max(0, 100 - apiPercent);
+    const usageLabel = quota.currentUsage !== null && quota.usageLimit !== null
+      ? `${quota.currentUsage} / ${quota.usageLimit}`
+      : null;
     nodes.push(
       h(
         'div',
@@ -1583,6 +1642,7 @@ const renderCursorItems = (
             'div',
             { className: styleMap.quotaMeta },
             h('span', { className: styleMap.quotaPercent }, `${remaining}%`),
+            usageLabel ? h('span', { className: styleMap.quotaCount }, usageLabel) : null
           )
         ),
         h(QuotaProgressBar, {
@@ -1639,6 +1699,9 @@ export const CURSOR_CONFIG: QuotaConfig<
     apiPercentUsed: number | null;
     autoPercentUsed: number | null;
     totalPercentUsed: number | null;
+    usageLimit: number | null;
+    currentUsage: number | null;
+    nextReset: string | null;
   }
 > = {
   type: 'cursor',
@@ -1657,6 +1720,9 @@ export const CURSOR_CONFIG: QuotaConfig<
     apiPercentUsed: data.apiPercentUsed,
     autoPercentUsed: data.autoPercentUsed,
     totalPercentUsed: data.totalPercentUsed,
+    usageLimit: data.usageLimit,
+    currentUsage: data.currentUsage,
+    nextReset: data.nextReset,
   }),
   buildErrorState: (message, status) => ({
     status: 'error',
@@ -1680,6 +1746,31 @@ interface CopilotAuthFileData {
   requests_limit?: number;
 }
 
+interface CopilotQuotaAPIResponse {
+  copilot_plan?: string;
+  quota_reset_date?: string;
+  quota_snapshots?: {
+    chat?: {
+      entitlement?: number;
+      remaining?: number;
+      percent_remaining?: number;
+      unlimited?: boolean;
+    };
+    completions?: {
+      entitlement?: number;
+      remaining?: number;
+      percent_remaining?: number;
+      unlimited?: boolean;
+    };
+    premium_interactions?: {
+      entitlement?: number;
+      remaining?: number;
+      percent_remaining?: number;
+      unlimited?: boolean;
+    };
+  };
+}
+
 const fetchCopilotQuota = async (
   file: AuthFileItem,
   _t: TFunction
@@ -1689,16 +1780,53 @@ const fetchCopilotQuota = async (
   seatUsed: number | null;
   requestsThisMonth: number | null;
   requestsLimit: number | null;
+  quotaResetDate: string | null;
+  chatQuotaRemaining: number | null;
+  chatQuotaTotal: number | null;
+  completionsQuotaRemaining: number | null;
+  completionsQuotaTotal: number | null;
 }> => {
-  const data = await authFilesApi.downloadJsonObject(file.name);
-  const copilotData = data as CopilotAuthFileData;
+  const authFileData = await authFilesApi.downloadJsonObject(file.name);
+  const copilotAuthData = authFileData as CopilotAuthFileData;
+
+  let seatType: string | null = null;
+  let quotaResetDate: string | null = null;
+  let chatQuotaRemaining: number | null = null;
+  let chatQuotaTotal: number | null = null;
+  let completionsQuotaRemaining: number | null = null;
+  let completionsQuotaTotal: number | null = null;
+
+  try {
+    const apiData = await authFilesApi.getCopilotQuota(file.name);
+    const quotaData = apiData as CopilotQuotaAPIResponse;
+
+    seatType = normalizeStringValue(quotaData?.copilot_plan);
+    quotaResetDate = normalizeStringValue(quotaData?.quota_reset_date);
+
+    if (quotaData?.quota_snapshots?.chat) {
+      chatQuotaTotal = normalizeNumberValue(quotaData.quota_snapshots.chat.entitlement);
+      chatQuotaRemaining = normalizeNumberValue(quotaData.quota_snapshots.chat.remaining);
+    }
+    if (quotaData?.quota_snapshots?.completions) {
+      completionsQuotaTotal = normalizeNumberValue(quotaData.quota_snapshots.completions.entitlement);
+      completionsQuotaRemaining = normalizeNumberValue(quotaData.quota_snapshots.completions.remaining);
+    }
+  } catch {
+    // API call failed, fall back to auth file data
+    seatType = normalizeStringValue(copilotAuthData.copilot_plan ?? copilotAuthData.seat_type);
+  }
 
   return {
-    seatType: normalizeStringValue(copilotData.copilot_plan ?? copilotData.seat_type),
-    seatQuota: normalizeNumberValue(copilotData.seat_unit_count),
-    seatUsed: normalizeNumberValue(copilotData.seat_usage),
-    requestsThisMonth: normalizeNumberValue(copilotData.requests_this_month),
-    requestsLimit: normalizeNumberValue(copilotData.requests_limit),
+    seatType: seatType ?? normalizeStringValue(copilotAuthData.copilot_plan ?? copilotAuthData.seat_type),
+    seatQuota: normalizeNumberValue(copilotAuthData.seat_unit_count),
+    seatUsed: normalizeNumberValue(copilotAuthData.seat_usage),
+    requestsThisMonth: normalizeNumberValue(copilotAuthData.requests_this_month),
+    requestsLimit: normalizeNumberValue(copilotAuthData.requests_limit),
+    quotaResetDate,
+    chatQuotaRemaining,
+    chatQuotaTotal,
+    completionsQuotaRemaining,
+    completionsQuotaTotal,
   };
 };
 
@@ -1718,6 +1846,76 @@ const renderCopilotItems = (
         { key: 'seat_type', className: styleMap.codexPlan },
         h('span', { className: styleMap.codexPlanLabel }, t('copilot_quota.seat_type')),
         h('span', { className: styleMap.codexPlanValue }, quota.seatType)
+      )
+    );
+  }
+
+  if (quota.quotaResetDate) {
+    const resetLabel = formatQuotaResetTime(quota.quotaResetDate);
+    nodes.push(
+      h(
+        'div',
+        { key: 'quota_reset', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('copilot_quota.next_reset')),
+        h('span', { className: styleMap.codexPlanValue }, resetLabel)
+      )
+    );
+  }
+
+  if (quota.chatQuotaTotal !== null && quota.chatQuotaTotal !== undefined && quota.chatQuotaTotal > 0) {
+    const chatPercent = quota.chatQuotaTotal > 0 && quota.chatQuotaRemaining != null
+      ? ((quota.chatQuotaRemaining ?? 0) / quota.chatQuotaTotal) * 100
+      : 0;
+    const chatUsed = quota.chatQuotaTotal - (quota.chatQuotaRemaining ?? 0);
+    nodes.push(
+      h(
+        'div',
+        { key: 'chat_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('copilot_quota.chat_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${Math.round(chatPercent)}%`),
+            h('span', { className: styleMap.quotaCount }, `${chatUsed} / ${quota.chatQuotaTotal}`)
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: chatPercent,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
+      )
+    );
+  }
+
+  if (quota.completionsQuotaTotal !== null && quota.completionsQuotaTotal !== undefined && quota.completionsQuotaTotal > 0) {
+    const completionsPercent = quota.completionsQuotaTotal > 0 && quota.completionsQuotaRemaining != null
+      ? ((quota.completionsQuotaRemaining ?? 0) / quota.completionsQuotaTotal) * 100
+      : 0;
+    const completionsUsed = quota.completionsQuotaTotal - (quota.completionsQuotaRemaining ?? 0);
+    nodes.push(
+      h(
+        'div',
+        { key: 'completions_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('copilot_quota.completions_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${Math.round(completionsPercent)}%`),
+            h('span', { className: styleMap.quotaCount }, `${completionsUsed} / ${quota.completionsQuotaTotal}`)
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: completionsPercent,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
       )
     );
   }
@@ -1749,37 +1947,6 @@ const renderCopilotItems = (
     );
   }
 
-  if (quota.requestsThisMonth !== null && quota.requestsThisMonth !== undefined) {
-    const requestsRemaining = Math.max(0, (quota.requestsLimit ?? 0) - quota.requestsThisMonth);
-    const requestsPercent = quota.requestsLimit && quota.requestsLimit > 0
-      ? (requestsRemaining / quota.requestsLimit) * 100
-      : 100;
-    nodes.push(
-      h(
-        'div',
-        { key: 'requests_quota', className: styleMap.quotaRow },
-        h(
-          'div',
-          { className: styleMap.quotaRowHeader },
-          h('span', { className: styleMap.quotaModel }, t('copilot_quota.requests_usage')),
-          h(
-            'div',
-            { className: styleMap.quotaMeta },
-            h('span', { className: styleMap.quotaPercent }, `${Math.round(requestsPercent)}%`),
-            quota.requestsLimit
-              ? h('span', { className: styleMap.quotaCount }, `${quota.requestsThisMonth} / ${quota.requestsLimit}`)
-              : null
-          )
-        ),
-        h(QuotaProgressBar, {
-          percent: requestsPercent,
-          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
-          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
-        })
-      )
-    );
-  }
-
   if (nodes.length === 0) {
     return h('div', { className: styleMap.quotaMessage }, t('copilot_quota.no_data'));
   }
@@ -1795,6 +1962,11 @@ export const COPILOT_CONFIG: QuotaConfig<
     seatUsed: number | null;
     requestsThisMonth: number | null;
     requestsLimit: number | null;
+    quotaResetDate: string | null;
+    chatQuotaRemaining: number | null;
+    chatQuotaTotal: number | null;
+    completionsQuotaRemaining: number | null;
+    completionsQuotaTotal: number | null;
   }
 > = {
   type: 'copilot',
@@ -1812,6 +1984,11 @@ export const COPILOT_CONFIG: QuotaConfig<
     seatUsed: data.seatUsed,
     requestsThisMonth: data.requestsThisMonth,
     requestsLimit: data.requestsLimit,
+    quotaResetDate: data.quotaResetDate,
+    chatQuotaRemaining: data.chatQuotaRemaining,
+    chatQuotaTotal: data.chatQuotaTotal,
+    completionsQuotaRemaining: data.completionsQuotaRemaining,
+    completionsQuotaTotal: data.completionsQuotaTotal,
   }),
   buildErrorState: (message, status) => ({
     status: 'error',

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 认证文件与 OAuth 排除模型相关 API
  */
 
@@ -517,7 +517,15 @@ export const authFilesApi = {
   },
 
   async getKiroQuota(name: string): Promise<Record<string, unknown>> {
-    return apiClient.get<Record<string, unknown>>(`/auth-files/kiro/quota?name=${encodeURIComponent(name)}`);
+    return apiClient.get<Record<string, unknown>>(`/kiro-quota?name=${encodeURIComponent(name)}`);
+  },
+
+  async getCursorQuota(name: string): Promise<Record<string, unknown>> {
+    return apiClient.get<Record<string, unknown>>(`/cursor-quota?auth_index=${encodeURIComponent(name)}`);
+  },
+
+  async getCopilotQuota(name: string): Promise<Record<string, unknown>> {
+    return apiClient.get<Record<string, unknown>>(`/copilot-quota?auth_index=${encodeURIComponent(name)}`);
   },
 
   // 获取指定 channel 的模型定义
