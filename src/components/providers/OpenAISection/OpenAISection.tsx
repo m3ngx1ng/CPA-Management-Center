@@ -94,6 +94,27 @@ export function OpenAISection({
     return sorted;
   }, [configs, sortField, sortDirection, keyStats]);
 
+  const getOriginalIndex = (sortedIndex: number): number => {
+    const sortedItem = sortedConfigs[sortedIndex];
+    if (!sortedItem) return -1;
+    const stableKey = `${sortedItem.name}::${sortedItem.baseUrl}`;
+    return configs.findIndex(c => `${c.name}::${c.baseUrl}` === stableKey);
+  };
+
+  const handleEditWithSortedIndex = (sortedIndex: number) => {
+    const originalIndex = getOriginalIndex(sortedIndex);
+    if (originalIndex >= 0) {
+      onEdit(originalIndex);
+    }
+  };
+
+  const handleDeleteWithSortedIndex = (sortedIndex: number) => {
+    const originalIndex = getOriginalIndex(sortedIndex);
+    if (originalIndex >= 0) {
+      onDelete(originalIndex);
+    }
+  };
+
   const statusBarCache = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof calculateStatusBarData>>();
 
@@ -165,8 +186,8 @@ export function OpenAISection({
           keyField={(item, index) => getOpenAIProviderKey(item, index)}
           emptyTitle={t('ai_providers.openai_empty_title')}
           emptyDescription={t('ai_providers.openai_empty_desc')}
-          onEdit={onEdit}
-          onDelete={onDelete}
+          onEdit={(sortedIndex) => handleEditWithSortedIndex(sortedIndex)}
+          onDelete={(sortedIndex) => handleDeleteWithSortedIndex(sortedIndex)}
           actionsDisabled={actionsDisabled}
           renderContent={(item, index) => {
             const stats = getOpenAIProviderStats(item, keyStats);
