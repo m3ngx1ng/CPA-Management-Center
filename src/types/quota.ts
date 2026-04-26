@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Quota management types.
  */
 
@@ -315,6 +315,29 @@ export interface KiroQuotaState {
   remaining?: number | null;
   remainingFraction?: number | null;
   nextReset?: string | null;
+  error?: string;
+  errorStatus?: number;
+}
+
+export interface CursorQuotaState {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  membershipType?: string | null;
+  billingCycleEnd?: string | null;
+  billingCycleStart?: string | null;
+  apiPercentUsed?: number | null;
+  autoPercentUsed?: number | null;
+  totalPercentUsed?: number | null;
+  error?: string;
+  errorStatus?: number;
+}
+
+export interface CopilotQuotaState {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  seatType?: string | null;
+  seatQuota?: number | null;
+  seatUsed?: number | null;
+  requestsThisMonth?: number | null;
+  requestsLimit?: number | null;
   error?: string;
   errorStatus?: number;
 }

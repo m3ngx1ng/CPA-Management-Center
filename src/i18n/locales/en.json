@@ -1,4 +1,4 @@
-﻿{
+{
     "common":  {
                    "login":  "Login",
                    "logout":  "Logout",
@@ -54,7 +54,9 @@
                    "model_alias_placeholder":  "Model alias (optional)",
                    "invalid_provider_index":  "Invalid provider index.",
                    "unsaved_changes_title":  "Unsaved changes",
-                   "unsaved_changes_message":  "You have unsaved changes. Leaving now will discard them. Do you want to leave?"
+                   "unsaved_changes_message":  "You have unsaved changes. Leaving now will discard them. Do you want to leave?",
+                   "sort_by":  "Sort by",
+                   "name":  "Name"
                },
     "title":  {
                   "main":  "CLI Proxy API Management Center",
@@ -1490,5 +1492,30 @@
                        "load_failed":  "Failed to load Kiro quota: {{message}}",
                        "plan_label":  "Plan",
                        "remaining_label":  "Remaining quota"
+                   },
+    "cursor_quota":  {
+                       "title":  "Cursor Quota",
+                       "empty_title":  "No Cursor credentials",
+                       "empty_desc":  "Upload a Cursor auth file to view available quota.",
+                       "idle":  "Refresh Cursor quota",
+                       "loading":  "Loading Cursor quota...",
+                       "load_failed":  "Failed to load Cursor quota: {{message}}",
+                       "plan_label":  "Plan",
+                       "billing_cycle":  "Billing Cycle",
+                       "api_usage":  "API Usage",
+                       "auto_usage":  "Auto Complete Usage",
+                       "no_data":  "No usage data available"
+                   },
+    "copilot_quota":  {
+                       "title":  "Copilot Quota",
+                       "empty_title":  "No Copilot credentials",
+                       "empty_desc":  "Upload a Copilot auth file to view available quota.",
+                       "idle":  "Refresh Copilot quota",
+                       "loading":  "Loading Copilot quota...",
+                       "load_failed":  "Failed to load Copilot quota: {{message}}",
+                       "seat_type":  "Plan",
+                       "seat_usage":  "Seat Usage",
+                       "requests_usage":  "Requests This Month",
+                       "no_data":  "No usage data available"
                    }
 }

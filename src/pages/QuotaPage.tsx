@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Quota management page - coordinates the three quota sections.
  */
 
@@ -15,6 +15,8 @@ import {
   GEMINI_CLI_CONFIG,
   KIMI_CONFIG,
   KIRO_CONFIG,
+  CURSOR_CONFIG,
+  COPILOT_CONFIG,
 } from '@/components/quota';
 import type { AuthFileItem } from '@/types';
 import styles from './QuotaPage.module.scss';
@@ -78,6 +80,8 @@ export function QuotaPage() {
       <QuotaSection config={GEMINI_CLI_CONFIG} files={files} loading={loading} disabled={disableControls} />
       <QuotaSection config={KIMI_CONFIG} files={files} loading={loading} disabled={disableControls} />
       <QuotaSection config={KIRO_CONFIG} files={files} loading={loading} disabled={disableControls} />
+      <QuotaSection config={CURSOR_CONFIG} files={files} loading={loading} disabled={disableControls} />
+      <QuotaSection config={COPILOT_CONFIG} files={files} loading={loading} disabled={disableControls} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Validation and type checking functions for quota management.
  */
 
@@ -39,12 +39,20 @@ export function isGeminiCliFile(file: AuthFileItem): boolean {
   return resolveAuthProvider(file) === 'gemini-cli';
 }
 
+export function isCopilotFile(file: AuthFileItem): boolean {
+  return resolveAuthProvider(file) === 'github-copilot';
+}
+
 export function isKimiFile(file: AuthFileItem): boolean {
   return resolveAuthProvider(file) === 'kimi';
 }
 
 export function isKiroFile(file: AuthFileItem): boolean {
   return resolveAuthProvider(file) === 'kiro';
+}
+
+export function isCursorFile(file: AuthFileItem): boolean {
+  return resolveAuthProvider(file) === 'cursor';
 }
 
 export function isRuntimeOnlyAuthFile(file: AuthFileItem): boolean {

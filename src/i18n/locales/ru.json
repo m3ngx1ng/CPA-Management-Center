@@ -54,7 +54,9 @@
     "model_alias_placeholder": "Псевдоним модели (необязательно)",
     "invalid_provider_index": "Неверный индекс провайдера.",
     "unsaved_changes_title": "Несохранённые изменения",
-    "unsaved_changes_message": "У вас есть несохранённые изменения. Если вы уйдёте, они будут потеряны. Выйти?"
+    "unsaved_changes_message": "У вас есть несохранённые изменения. Если вы уйдёте, они будут потеряны. Выйти?",
+    "sort_by": "Сортировка",
+    "name": "Название"
   },
   "title": {
     "main": "Центр управления CLI Proxy API",
@@ -704,6 +706,41 @@
     "limit_window": "Лимит {{duration}}",
     "limit_index": "Лимит #{{index}}",
     "reset_hint": "сброс через {{hint}}"
+  },
+  "kiro_quota": {
+    "title": "Квота Kiro",
+    "empty_title": "Учётные данные Kiro отсутствуют",
+    "empty_desc": "Загрузите файл авторизации Kiro, чтобы увидеть доступную квоту.",
+    "idle": "Обновить квоту Kiro",
+    "loading": "Загрузка квоты Kiro...",
+    "load_failed": "Не удалось загрузить квоту Kiro: {{message}}",
+    "plan_label": "Тариф",
+    "remaining_label": "Остаток квоты"
+  },
+  "cursor_quota": {
+    "title": "Квота Cursor",
+    "empty_title": "Учётные данные Cursor отсутствуют",
+    "empty_desc": "Загрузите файл авторизации Cursor, чтобы увидеть доступную квоту.",
+    "idle": "Обновить квоту Cursor",
+    "loading": "Загрузка квоты Cursor...",
+    "load_failed": "Не удалось загрузить квоту Cursor: {{message}}",
+    "plan_label": "Тариф",
+    "billing_cycle": "Платежный цикл",
+    "api_usage": "Использование API",
+    "auto_usage": "Использование автозаполнения",
+    "no_data": "Данные об использовании отсутствуют"
+  },
+  "copilot_quota": {
+    "title": "Квота Copilot",
+    "empty_title": "Учётные данные Copilot отсутствуют",
+    "empty_desc": "Загрузите файл авторизации Copilot, чтобы увидеть доступную квоту.",
+    "idle": "Обновить квоту Copilot",
+    "loading": "Загрузка квоты Copilot...",
+    "load_failed": "Не удалось загрузить квоту Copilot: {{message}}",
+    "seat_type": "Тариф",
+    "seat_usage": "Использование мест",
+    "requests_usage": "Запросов за месяц",
+    "no_data": "Данные об использовании отсутствуют"
   },
   "vertex_import": {
     "title": "Вход с Vertex JSON",

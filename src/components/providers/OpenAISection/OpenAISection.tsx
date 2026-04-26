@@ -1,8 +1,8 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { IconCheck, IconX } from '@/components/ui/icons';
+import { IconCheck, IconX, IconChevronUp, IconChevronDown } from '@/components/ui/icons';
 import iconOpenaiLight from '@/assets/icons/openai-light.svg';
 import iconOpenaiDark from '@/assets/icons/openai-dark.svg';
 import type { OpenAIProviderConfig } from '@/types';
@@ -19,6 +19,9 @@ import {
   getOpenAIProviderStats,
   getStatsForIdentity,
 } from '../utils';
+
+type SortField = 'priority' | 'name' | 'successRate';
+type SortDirection = 'asc' | 'desc';
 
 interface OpenAISectionProps {
   configs: OpenAIProviderConfig[];
@@ -50,10 +53,51 @@ export function OpenAISection({
   const { t } = useTranslation();
   const actionsDisabled = disableControls || loading || isSwitching;
 
+  const [sortField, setSortField] = useState<SortField>('priority');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSortChange = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedConfigs = useMemo(() => {
+    const sorted = [...configs].sort((a, b) => {
+      switch (sortField) {
+        case 'priority': {
+          const priorityA = a.priority ?? -Infinity;
+          const priorityB = b.priority ?? -Infinity;
+          return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
+        }
+        case 'name':
+          return sortDirection === 'asc'
+            ? (a.name || '').localeCompare(b.name || '')
+            : (b.name || '').localeCompare(a.name || '');
+        case 'successRate': {
+          const statsA = getOpenAIProviderStats(a, keyStats);
+          const statsB = getOpenAIProviderStats(b, keyStats);
+          const totalA = statsA.success + statsA.failure;
+          const totalB = statsB.success + statsB.failure;
+          const rateA = totalA > 0 ? statsA.success / totalA : 0;
+          const rateB = totalB > 0 ? statsB.success / totalB : 0;
+          return sortDirection === 'asc' ? rateA - rateB : rateB - rateA;
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [configs, sortField, sortDirection, keyStats]);
+
   const statusBarCache = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof calculateStatusBarData>>();
 
-    configs.forEach((provider, index) => {
+    sortedConfigs.forEach((provider, index) => {
       const providerKey = getOpenAIProviderKey(provider, index);
       cache.set(
         providerKey,
@@ -68,7 +112,25 @@ export function OpenAISection({
     });
 
     return cache;
-  }, [configs, usageDetailsByAuthIndex, usageDetailsBySource]);
+  }, [sortedConfigs, usageDetailsByAuthIndex, usageDetailsBySource]);
+
+  const renderSortButton = (field: SortField, label: string) => {
+    const isActive = sortField === field;
+    return (
+      <button
+        className={`${styles.sortButton} ${isActive ? styles.sortButtonActive : ''}`}
+        onClick={() => handleSortChange(field)}
+        type="button"
+      >
+        {label}
+        {isActive ? (
+          sortDirection === 'asc' ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />
+        ) : (
+          <IconChevronDown size={14} className={styles.sortIconInactive} />
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -89,8 +151,16 @@ export function OpenAISection({
           </Button>
         }
       >
+        {configs.length > 1 && (
+          <div className={styles.sortBar}>
+            <span className={styles.sortLabel}>{t('common.sort_by')}:</span>
+            {renderSortButton('priority', t('common.priority'))}
+            {renderSortButton('name', t('common.name'))}
+            {renderSortButton('successRate', t('usage_stats.success_rate'))}
+          </div>
+        )}
         <ProviderList<OpenAIProviderConfig>
-          items={configs}
+          items={sortedConfigs}
           loading={loading}
           keyField={(item, index) => getOpenAIProviderKey(item, index)}
           emptyTitle={t('ai_providers.openai_empty_title')}

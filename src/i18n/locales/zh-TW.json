@@ -54,7 +54,9 @@
     "model_alias_placeholder": "模型別名（選填）",
     "invalid_provider_index": "無效的供應商索引。",
     "unsaved_changes_title": "未儲存的變更",
-    "unsaved_changes_message": "你有未儲存的變更，離開後將遺失這些變更。確定要離開嗎？"
+    "unsaved_changes_message": "你有未儲存的變更，離開後將遺失這些變更。確定要離開嗎？",
+    "sort_by": "排序",
+    "name": "名稱"
   },
   "title": {
     "main": "CLI Proxy API Management Center",
@@ -707,6 +709,41 @@
     "limit_window": "{{duration}} 限額",
     "limit_index": "限額 #{{index}}",
     "reset_hint": "{{hint}} 後重置"
+  },
+  "kiro_quota": {
+    "title": "Kiro 配額",
+    "empty_title": "暫無 Kiro 驗證",
+    "empty_desc": "上傳 Kiro 驗證檔案後即可查看配額。",
+    "idle": "重新整理 Kiro 配額",
+    "loading": "正在載入 Kiro 配額...",
+    "load_failed": "Kiro 配額取得失敗：{{message}}",
+    "plan_label": "方案",
+    "remaining_label": "剩餘配額"
+  },
+  "cursor_quota": {
+    "title": "Cursor 配額",
+    "empty_title": "暫無 Cursor 驗證",
+    "empty_desc": "上傳 Cursor 驗證檔案後即可查看配額。",
+    "idle": "重新整理 Cursor 配額",
+    "loading": "正在載入 Cursor 配額...",
+    "load_failed": "Cursor 配額取得失敗：{{message}}",
+    "plan_label": "方案",
+    "billing_cycle": "帳單週期",
+    "api_usage": "API 使用量",
+    "auto_usage": "自動補全使用量",
+    "no_data": "暫無用量資料"
+  },
+  "copilot_quota": {
+    "title": "Copilot 配額",
+    "empty_title": "暫無 Copilot 驗證",
+    "empty_desc": "上傳 Copilot 驗證檔案後即可查看配額。",
+    "idle": "重新整理 Copilot 配額",
+    "loading": "正在載入 Copilot 配額...",
+    "load_failed": "Copilot 配額取得失敗：{{message}}",
+    "seat_type": "方案",
+    "seat_usage": "席位使用量",
+    "requests_usage": "本月請求次數",
+    "no_data": "暫無用量資料"
   },
   "vertex_import": {
     "title": "Vertex JSON 登入",

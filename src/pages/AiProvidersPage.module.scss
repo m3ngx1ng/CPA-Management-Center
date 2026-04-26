@@ -1045,3 +1045,58 @@
     color: #f1b0a6;
   }
 }
+
+// OpenAI Provider 排序栏样式
+.sortBar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  margin-bottom: $spacing-md;
+}
+
+.sortLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-right: $spacing-xs;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+  }
+}
+
+.sortButtonActive {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+
+  &:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+  }
+}
+
+.sortIconInactive {
+  opacity: 0.4;
+}

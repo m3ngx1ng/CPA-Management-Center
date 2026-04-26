@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Quota configuration definitions.
  */
 
@@ -29,6 +29,8 @@ import type {
   KimiQuotaRow,
   KimiQuotaState,
   KiroQuotaState,
+  CursorQuotaState,
+  CopilotQuotaState,
 } from '@/types';
 import { apiCallApi, authFilesApi, getApiCallErrorMessage } from '@/services/api';
 import { useQuotaStore } from '@/stores';
@@ -76,6 +78,8 @@ import {
   isKimiFile,
   isRuntimeOnlyAuthFile,
   isKiroFile,
+  isCursorFile,
+  isCopilotFile,
 } from '@/utils/quota';
 import { normalizeAuthIndex } from '@/utils/usage';
 import type { QuotaRenderHelpers } from './QuotaCard';
@@ -83,7 +87,7 @@ import styles from '@/pages/QuotaPage.module.scss';
 
 type QuotaUpdater<T> = T | ((prev: T) => T);
 
-type QuotaType = 'antigravity' | 'claude' | 'codex' | 'gemini-cli' | 'kimi' | 'kiro';
+type QuotaType = 'antigravity' | 'claude' | 'codex' | 'gemini-cli' | 'kimi' | 'kiro' | 'cursor' | 'copilot';
 
 const DEFAULT_ANTIGRAVITY_PROJECT_ID = 'bamboo-precept-lgxtn';
 const QUOTA_PROGRESS_HIGH_THRESHOLD = 70;
@@ -1473,5 +1477,347 @@ export const KIRO_CONFIG: QuotaConfig<
   controlClassName: styles.codexControl,
   gridClassName: styles.codexGrid,
   renderQuotaItems: renderKiroItems,
+};
+
+interface CursorUsageRaw {
+  billingCycleEnd?: string;
+  billingCycleStart?: string;
+  membershipType?: string;
+  individualUsage?: {
+    onDemand?: { enabled?: boolean; limit?: number | null; remaining?: number | null; used?: number };
+    plan?: {
+      apiPercentUsed?: number;
+      autoPercentUsed?: number;
+      totalPercentUsed?: number;
+      used?: number;
+      limit?: number;
+      remaining?: number;
+    };
+  };
+  isUnlimited?: boolean;
+  limitType?: string;
+}
+
+interface CursorAuthFileData {
+  type?: string;
+  cursor_usage_raw?: CursorUsageRaw;
+  membership_type?: string;
+}
+
+const fetchCursorQuota = async (
+  file: AuthFileItem,
+  _t: TFunction
+): Promise<{
+  membershipType: string | null;
+  billingCycleEnd: string | null;
+  billingCycleStart: string | null;
+  apiPercentUsed: number | null;
+  autoPercentUsed: number | null;
+  totalPercentUsed: number | null;
+}> => {
+  const data = await authFilesApi.downloadJsonObject(file.name);
+  const cursorData = data as CursorAuthFileData;
+  const usage = cursorData?.cursor_usage_raw;
+
+  return {
+    membershipType: normalizeStringValue(usage?.membershipType ?? data?.membership_type),
+    billingCycleEnd: normalizeStringValue(usage?.billingCycleEnd),
+    billingCycleStart: normalizeStringValue(usage?.billingCycleStart),
+    apiPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.apiPercentUsed),
+    autoPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.autoPercentUsed),
+    totalPercentUsed: normalizeNumberValue(usage?.individualUsage?.plan?.totalPercentUsed),
+  };
+};
+
+const renderCursorItems = (
+  quota: CursorQuotaState,
+  t: TFunction,
+  helpers: QuotaRenderHelpers
+): ReactNode => {
+  const { styles: styleMap, QuotaProgressBar } = helpers;
+  const { createElement: h, Fragment } = React;
+  const nodes: ReactNode[] = [];
+
+  if (quota.membershipType) {
+    nodes.push(
+      h(
+        'div',
+        { key: 'plan', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('cursor_quota.plan_label')),
+        h('span', { className: styleMap.codexPlanValue }, quota.membershipType)
+      )
+    );
+  }
+
+  if (quota.billingCycleEnd) {
+    const resetLabel = formatQuotaResetTime(quota.billingCycleEnd);
+    nodes.push(
+      h(
+        'div',
+        { key: 'billing', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('cursor_quota.billing_cycle')),
+        h('span', { className: styleMap.codexPlanValue }, resetLabel)
+      )
+    );
+  }
+
+  const apiPercent = quota.apiPercentUsed !== null && quota.apiPercentUsed !== undefined
+    ? Math.round(quota.apiPercentUsed)
+    : null;
+
+  if (apiPercent !== null) {
+    const remaining = Math.max(0, 100 - apiPercent);
+    nodes.push(
+      h(
+        'div',
+        { key: 'api_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('cursor_quota.api_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${remaining}%`),
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: remaining,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
+      )
+    );
+  }
+
+  const autoPercent = quota.autoPercentUsed !== null && quota.autoPercentUsed !== undefined
+    ? Math.round(quota.autoPercentUsed)
+    : null;
+
+  if (autoPercent !== null) {
+    const remaining = Math.max(0, 100 - autoPercent);
+    nodes.push(
+      h(
+        'div',
+        { key: 'auto_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('cursor_quota.auto_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${remaining}%`),
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: remaining,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
+      )
+    );
+  }
+
+  if (nodes.length === 0) {
+    return h('div', { className: styleMap.quotaMessage }, t('cursor_quota.no_data'));
+  }
+
+  return h(Fragment, null, ...nodes);
+};
+
+export const CURSOR_CONFIG: QuotaConfig<
+  CursorQuotaState,
+  {
+    membershipType: string | null;
+    billingCycleEnd: string | null;
+    billingCycleStart: string | null;
+    apiPercentUsed: number | null;
+    autoPercentUsed: number | null;
+    totalPercentUsed: number | null;
+  }
+> = {
+  type: 'cursor',
+  i18nPrefix: 'cursor_quota',
+  cardIdleMessageKey: 'quota_management.card_idle_hint',
+  filterFn: (file) => isCursorFile(file) && !isDisabledAuthFile(file),
+  fetchQuota: fetchCursorQuota,
+  storeSelector: (state) => state.cursorQuota,
+  storeSetter: 'setCursorQuota',
+  buildLoadingState: () => ({ status: 'loading' }),
+  buildSuccessState: (data) => ({
+    status: 'success',
+    membershipType: data.membershipType,
+    billingCycleEnd: data.billingCycleEnd,
+    billingCycleStart: data.billingCycleStart,
+    apiPercentUsed: data.apiPercentUsed,
+    autoPercentUsed: data.autoPercentUsed,
+    totalPercentUsed: data.totalPercentUsed,
+  }),
+  buildErrorState: (message, status) => ({
+    status: 'error',
+    error: message,
+    errorStatus: status,
+  }),
+  cardClassName: styles.codexCard,
+  controlsClassName: styles.codexControls,
+  controlClassName: styles.codexControl,
+  gridClassName: styles.codexGrid,
+  renderQuotaItems: renderCursorItems,
+};
+
+interface CopilotAuthFileData {
+  type?: string;
+  copilot_plan?: string;
+  seat_type?: string;
+  seat_unit_count?: number;
+  seat_usage?: number;
+  requests_this_month?: number;
+  requests_limit?: number;
+}
+
+const fetchCopilotQuota = async (
+  file: AuthFileItem,
+  t: TFunction
+): Promise<{
+  seatType: string | null;
+  seatQuota: number | null;
+  seatUsed: number | null;
+  requestsThisMonth: number | null;
+  requestsLimit: number | null;
+}> => {
+  const data = await authFilesApi.downloadJsonObject(file.name);
+  const copilotData = data as CopilotAuthFileData;
+
+  return {
+    seatType: normalizeStringValue(copilotData.copilot_plan ?? copilotData.seat_type),
+    seatQuota: normalizeNumberValue(copilotData.seat_unit_count),
+    seatUsed: normalizeNumberValue(copilotData.seat_usage),
+    requestsThisMonth: normalizeNumberValue(copilotData.requests_this_month),
+    requestsLimit: normalizeNumberValue(copilotData.requests_limit),
+  };
+};
+
+const renderCopilotItems = (
+  quota: CopilotQuotaState,
+  t: TFunction,
+  helpers: QuotaRenderHelpers
+): ReactNode => {
+  const { styles: styleMap, QuotaProgressBar } = helpers;
+  const { createElement: h, Fragment } = React;
+  const nodes: ReactNode[] = [];
+
+  if (quota.seatType) {
+    nodes.push(
+      h(
+        'div',
+        { key: 'seat_type', className: styleMap.codexPlan },
+        h('span', { className: styleMap.codexPlanLabel }, t('copilot_quota.seat_type')),
+        h('span', { className: styleMap.codexPlanValue }, quota.seatType)
+      )
+    );
+  }
+
+  if (quota.seatQuota !== null && quota.seatQuota !== undefined) {
+    const seatRemaining = Math.max(0, quota.seatQuota - (quota.seatUsed ?? 0));
+    const seatPercent = quota.seatQuota > 0 ? (seatRemaining / quota.seatQuota) * 100 : 0;
+    nodes.push(
+      h(
+        'div',
+        { key: 'seat_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('copilot_quota.seat_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${Math.round(seatPercent)}%`),
+            h('span', { className: styleMap.quotaCount }, `${quota.seatUsed ?? 0} / ${quota.seatQuota}`)
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: seatPercent,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
+      )
+    );
+  }
+
+  if (quota.requestsThisMonth !== null && quota.requestsThisMonth !== undefined) {
+    const requestsRemaining = Math.max(0, (quota.requestsLimit ?? 0) - quota.requestsThisMonth);
+    const requestsPercent = quota.requestsLimit && quota.requestsLimit > 0
+      ? (requestsRemaining / quota.requestsLimit) * 100
+      : 100;
+    nodes.push(
+      h(
+        'div',
+        { key: 'requests_quota', className: styleMap.quotaRow },
+        h(
+          'div',
+          { className: styleMap.quotaRowHeader },
+          h('span', { className: styleMap.quotaModel }, t('copilot_quota.requests_usage')),
+          h(
+            'div',
+            { className: styleMap.quotaMeta },
+            h('span', { className: styleMap.quotaPercent }, `${Math.round(requestsPercent)}%`),
+            quota.requestsLimit
+              ? h('span', { className: styleMap.quotaCount }, `${quota.requestsThisMonth} / ${quota.requestsLimit}`)
+              : null
+          )
+        ),
+        h(QuotaProgressBar, {
+          percent: requestsPercent,
+          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+        })
+      )
+    );
+  }
+
+  if (nodes.length === 0) {
+    return h('div', { className: styleMap.quotaMessage }, t('copilot_quota.no_data'));
+  }
+
+  return h(Fragment, null, ...nodes);
+};
+
+export const COPILOT_CONFIG: QuotaConfig<
+  CopilotQuotaState,
+  {
+    seatType: string | null;
+    seatQuota: number | null;
+    seatUsed: number | null;
+    requestsThisMonth: number | null;
+    requestsLimit: number | null;
+  }
+> = {
+  type: 'copilot',
+  i18nPrefix: 'copilot_quota',
+  cardIdleMessageKey: 'quota_management.card_idle_hint',
+  filterFn: (file) => isCopilotFile(file) && !isDisabledAuthFile(file),
+  fetchQuota: fetchCopilotQuota,
+  storeSelector: (state) => state.copilotQuota,
+  storeSetter: 'setCopilotQuota',
+  buildLoadingState: () => ({ status: 'loading' }),
+  buildSuccessState: (data) => ({
+    status: 'success',
+    seatType: data.seatType,
+    seatQuota: data.seatQuota,
+    seatUsed: data.seatUsed,
+    requestsThisMonth: data.requestsThisMonth,
+    requestsLimit: data.requestsLimit,
+  }),
+  buildErrorState: (message, status) => ({
+    status: 'error',
+    error: message,
+    errorStatus: status,
+  }),
+  cardClassName: styles.codexCard,
+  controlsClassName: styles.codexControls,
+  controlClassName: styles.codexControl,
+  gridClassName: styles.codexGrid,
+  renderQuotaItems: renderCopilotItems,
 };
 
